@@ -14,6 +14,8 @@ class RegisterViewController: UIViewController {
     @IBOutlet weak var passwordTextfield: UITextField!
     
     @IBAction func registerPressed(_ sender: UIButton) {
+        
+        performSegue(withIdentifier: "RegisterToChat", sender: self)
     }
     
 }
