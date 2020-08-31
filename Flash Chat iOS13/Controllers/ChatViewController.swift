@@ -15,10 +15,15 @@ class ChatViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet weak var messageTextfield: UITextField!
     
+    var messages: [Message] = []
+    
     let db = Firestore.firestore()
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        tableView.dataSource = self
+        tableView.register(UINib(nibName: "MessageCell", bundle: nil), forCellReuseIdentifier: "ReusableCell")
         
         db.collection("messages").addSnapshotListener { (querySnapshot, error) in
             if let e = error {
@@ -29,7 +34,12 @@ class ChatViewController: UIViewController {
                 let data = document.data()
                 
                 print("Current data: \(data)")
+                if let message = data["message"] as? String, let sender = data["sender"] as? String {
+                    self.messages.append(Message(sender: sender, message: message))
+                }
             })
+            
+            DispatchQueue.main.async { self.tableView.reloadData() }
         }
     }
     
@@ -57,4 +67,18 @@ class ChatViewController: UIViewController {
             print ("Error signing out: %@", signOutError)
         }
     }
+}
+
+extension ChatViewController: UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        messages.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "ReusableCell", for: indexPath) as! MessageCell
+        cell.messageLabel.text = messages[indexPath.row].message
+        return cell
+    }
+    
+    
 }
