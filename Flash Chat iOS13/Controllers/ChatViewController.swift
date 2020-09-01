@@ -23,23 +23,33 @@ class ChatViewController: UIViewController {
         super.viewDidLoad()
         
         tableView.dataSource = self
-        tableView.register(UINib(nibName: "MessageCell", bundle: nil), forCellReuseIdentifier: "ReusableCell")
+        title = K.appName
+        navigationItem.hidesBackButton = true
         
-        db.collection("messages").addSnapshotListener { (querySnapshot, error) in
+        tableView.register(UINib(nibName: K.cellNibName, bundle: nil), forCellReuseIdentifier: K.cellIdentifier)
+        
+        db.collection("messages").order(by: "timeStamp").addSnapshotListener { (querySnapshot, error) in
             if let e = error {
                 print("Error fetching messages: \(e)")
-            }
-            
-            querySnapshot?.documents.forEach({ (document) in
-                let data = document.data()
+            } else {
+                self.messages.removeAll()
+                querySnapshot?.documents.forEach({ (document) in
+                    let data = document.data()
+                    
+                    print("Current data: \(data)")
+                    if let message = data["message"] as? String, let sender = data["sender"] as? String {
+                        self.messages.append(Message(sender: sender, message: message))
+                    }
+                })
                 
-                print("Current data: \(data)")
-                if let message = data["message"] as? String, let sender = data["sender"] as? String {
-                    self.messages.append(Message(sender: sender, message: message))
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                    
+                    if(!self.messages.isEmpty){
+                        self.tableView.scrollToRow(at: IndexPath(row: self.messages.count - 1, section: 0), at: .bottom, animated: false)
+                    }
                 }
-            })
-            
-            DispatchQueue.main.async { self.tableView.reloadData() }
+            }
         }
     }
     
@@ -75,8 +85,24 @@ extension ChatViewController: UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ReusableCell", for: indexPath) as! MessageCell
-        cell.messageLabel.text = messages[indexPath.row].message
+        let cell = tableView.dequeueReusableCell(withIdentifier: K.cellIdentifier, for: indexPath) as! MessageCell
+        let message = messages[indexPath.row]
+        cell.messageLabel.text = message.message
+        
+        if(Auth.auth().currentUser?.email == message.sender){
+            cell.avatar.isHidden = false
+            cell.avatarYou.isHidden = true
+            
+            cell.bubbleView.backgroundColor = UIColor(named: K.BrandColors.purple)
+            cell.messageLabel.textColor = UIColor(named: K.BrandColors.lightPurple)
+        } else {
+            cell.avatar.isHidden = true
+            cell.avatarYou.isHidden = false
+            
+            cell.bubbleView.backgroundColor = UIColor(named: K.BrandColors.blue)
+            cell.messageLabel.textColor = UIColor(named: K.BrandColors.lighBlue)
+        }
+        
         return cell
     }
     
